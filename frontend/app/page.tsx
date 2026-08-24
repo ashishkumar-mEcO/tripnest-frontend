@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import api from "@/lib/api";
 
 interface Destination {
@@ -32,47 +33,9 @@ export default function Home() {
       .catch((err) => console.log("Error loading destinations:", err));
   }, []);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    setUserName(null);
-  };
-
   return (
     <div className="min-h-screen bg-sky-50 text-slate-800">
-      {/* Travel Navbar */}
-      <header className="bg-sky-600 text-white shadow-md">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold tracking-wide flex items-center gap-2">
-            ✈️ TripNest
-          </Link>
-
-          <nav className="flex items-center gap-4">
-            {userName ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">Hello, {userName}</span>
-                <button
-                  onClick={handleLogout}
-                  className="bg-sky-700 hover:bg-sky-800 px-3 py-1.5 rounded-md text-xs font-semibold"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <>
-                <Link href="/login" className="hover:underline text-sm font-medium">
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-900 px-4 py-2 rounded-md text-sm font-bold shadow-sm transition"
-                >
-                  Register
-                </Link>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Hero Banner */}
       <section className="bg-gradient-to-b from-sky-600 to-sky-700 text-white py-16 px-6 text-center">
@@ -83,19 +46,54 @@ export default function Home() {
           <p className="text-sky-100 text-base mb-6">
             Your simple travel companion to find places, organize schedules, and manage your trips effortlessly.
           </p>
-          <Link
-            href="/register"
-            className="inline-block bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 py-3 rounded-lg text-sm shadow-md transition"
-          >
-            Start Your Journey Free
-          </Link>
+
+          {userName ? (
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link
+                href="/dashboard"
+                className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 py-3 rounded-xl text-sm shadow-md transition"
+              >
+                📊 Go to Dashboard
+              </Link>
+              <Link
+                href="/destinations"
+                className="bg-white/20 hover:bg-white/30 text-white font-bold px-6 py-3 rounded-xl text-sm border border-white/40 shadow-md transition"
+              >
+                🌤️ Browse Weather & Destinations
+              </Link>
+              <Link
+                href="/trips"
+                className="bg-sky-800/80 hover:bg-sky-900 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md transition"
+              >
+                ✈️ Manage Trips
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href="/register"
+              className="inline-block bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 py-3 rounded-xl text-sm shadow-md transition"
+            >
+              Start Your Journey Free
+            </Link>
+          )}
         </div>
       </section>
 
       {/* Destinations List */}
       <main className="max-w-6xl mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold text-sky-900 mb-2">Popular Travel Destinations</h2>
-        <p className="text-slate-600 text-sm mb-6">Discover top places for your next trip:</p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-sky-900">Popular Travel Destinations</h2>
+            <p className="text-slate-600 text-sm">Discover top places for your next trip:</p>
+          </div>
+
+          <Link
+            href="/destinations"
+            className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
+          >
+            View Live Weather & All Destinations →
+          </Link>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {destinations.map((dest) => (
@@ -117,8 +115,11 @@ export default function Home() {
 
               <p className="text-slate-600 text-xs mb-3 line-clamp-3">{dest.description}</p>
 
-              <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between">
+              <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
                 <span>Weather: <strong className="text-slate-700">{dest.weatherInfo}</strong></span>
+                <Link href="/destinations" className="text-sky-600 font-bold hover:underline">
+                  Check Weather ➔
+                </Link>
               </div>
             </div>
           ))}
