@@ -43,7 +43,7 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/destinations", "/api/destinations/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/destinations", "/api/destinations/**", "/api/weather/**").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

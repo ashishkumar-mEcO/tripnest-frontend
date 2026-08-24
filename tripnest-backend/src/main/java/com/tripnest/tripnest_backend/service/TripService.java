@@ -2,15 +2,18 @@ package com.tripnest.tripnest_backend.service;
 
 import com.tripnest.tripnest_backend.dto.TripRequest;
 import com.tripnest.tripnest_backend.dto.TripResponse;
+import com.tripnest.tripnest_backend.entity.Budget;
 import com.tripnest.tripnest_backend.entity.Destination;
 import com.tripnest.tripnest_backend.entity.Trip;
 import com.tripnest.tripnest_backend.entity.User;
+import com.tripnest.tripnest_backend.repository.BudgetRepository;
 import com.tripnest.tripnest_backend.repository.DestinationRepository;
 import com.tripnest.tripnest_backend.repository.TripRepository;
 import com.tripnest.tripnest_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -20,6 +23,7 @@ public class TripService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final DestinationRepository destinationRepository;
+    private final BudgetRepository budgetRepository;
 
     public TripResponse createTrip(TripRequest request, String userEmail) {
         User user = getUserByEmail(userEmail);
@@ -43,6 +47,16 @@ public class TripService {
         }
 
         Trip savedTrip = tripRepository.save(trip);
+
+        // Always create a linked Budget record in budgets table
+        BigDecimal initialBudget = request.getBudget() != null ? request.getBudget() : BigDecimal.ZERO;
+        Budget budget = new Budget();
+        budget.setTrip(savedTrip);
+        budget.setTotalBudget(initialBudget);
+        budget.setSpentAmount(BigDecimal.ZERO);
+        budget.setCurrency("INR");
+        budgetRepository.save(budget);
+
         return mapToResponse(savedTrip);
     }
 
@@ -77,6 +91,19 @@ public class TripService {
         }
 
         Trip updatedTrip = tripRepository.save(trip);
+
+        if (request.getBudget() != null) {
+            Budget budget = budgetRepository.findByTripId(id).orElse(null);
+            if (budget == null) {
+                budget = new Budget();
+                budget.setTrip(updatedTrip);
+                budget.setSpentAmount(BigDecimal.ZERO);
+            }
+            budget.setTotalBudget(request.getBudget());
+            budget.setCurrency("INR");
+            budgetRepository.save(budget);
+        }
+
         return mapToResponse(updatedTrip);
     }
 
@@ -98,7 +125,6 @@ public class TripService {
 
     private void verifyOwnership(Trip trip, String userEmail) {
         User user = getUserByEmail(userEmail);
-        // Allow owners or administrators
         if (!trip.getOwner().getId().equals(user.getId()) &&
                 !"ADMINISTRATOR".equals(user.getRole().getName())) {
             throw new RuntimeException("You do not have permission to access or modify this trip");
@@ -110,6 +136,10 @@ public class TripService {
         String destName = t.getDestination() != null ? t.getDestination().getName() : null;
         String destCountry = t.getDestination() != null ? t.getDestination().getCountry() : null;
 
+        BigDecimal budgetAmount = budgetRepository.findByTripId(t.getId())
+                .map(Budget::getTotalBudget)
+                .orElse(BigDecimal.ZERO);
+
         return new TripResponse(
                 t.getId(),
                 t.getTitle(),
@@ -120,6 +150,7 @@ public class TripService {
                 destCountry,
                 t.getStartDate(),
                 t.getEndDate(),
+                budgetAmount,
                 t.getStatus()
         );
     }
