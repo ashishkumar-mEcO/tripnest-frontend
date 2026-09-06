@@ -25,9 +25,11 @@ export default function LoginPage() {
       const data = response.data;
 
       if (data.token) {
+        localStorage.clear();
         localStorage.setItem("token", data.token);
         localStorage.setItem("userEmail", data.email);
         localStorage.setItem("userName", data.name);
+        if (data.role) localStorage.setItem("userRole", data.role);
       }
 
       setSuccess(`Welcome, ${data.name || "back"}!`);

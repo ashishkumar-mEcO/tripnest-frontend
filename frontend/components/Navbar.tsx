@@ -4,33 +4,48 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import NotificationBell from "./NotificationBell";
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
 
+  const [userRole, setUserRole] = useState<string | null>(null);
+
   useEffect(() => {
     const name = localStorage.getItem("userName");
+    const role = localStorage.getItem("userRole");
     setUserName(name);
+    setUserRole(role);
   }, [pathname]);
 
   const handleLogout = () => {
     localStorage.clear();
     setUserName(null);
+    setUserRole(null);
     router.push("/login");
   };
 
-  const navLinks = [
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "My Trips", href: "/trips" },
-    { name: "Destinations", href: "/destinations" },
-    { name: "Profile", href: "/profile" },
-  ];
+  const dashboardHref = userRole === "ADMINISTRATOR" ? "/admin" : "/dashboard";
+
+  const navLinks =
+    userRole === "ADMINISTRATOR"
+      ? [
+          { name: "Dashboard", href: "/admin" },
+          { name: "Profile", href: "/profile" },
+        ]
+      : [
+          { name: "Dashboard", href: "/dashboard" },
+          { name: "My Trips", href: "/trips" },
+          { name: "Destinations", href: "/destinations" },
+          { name: "Profile", href: "/profile" },
+        ];
 
   return (
     <header className="bg-sky-600 text-white shadow-md sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-        <Link href="/dashboard" className="text-2xl font-extrabold tracking-wide flex items-center gap-2">
+        <Link href={dashboardHref} className="text-2xl font-extrabold tracking-wide flex items-center gap-2">
           ✈️ <span className="text-white">Trip</span><span className="text-amber-400">Nest</span>
         </Link>
 
@@ -51,6 +66,8 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {userName ? (
             <div className="flex items-center gap-3">
+              <NotificationBell />
+
               <span className="text-xs font-semibold bg-sky-700 text-sky-100 px-3 py-1.5 rounded-full border border-sky-500">
                 👤 {userName}
               </span>
