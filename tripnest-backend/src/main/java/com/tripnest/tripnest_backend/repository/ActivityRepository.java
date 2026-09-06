@@ -10,4 +10,6 @@ import java.util.List;
 public interface ActivityRepository extends JpaRepository<Activity, Integer> {
 
     List<Activity> findByItineraryIdOrderByStartTimeAsc(Integer itineraryId);
+
+    void deleteByItineraryId(Integer itineraryId);
 }

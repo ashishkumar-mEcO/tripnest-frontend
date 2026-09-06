@@ -6,15 +6,16 @@ import com.tripnest.tripnest_backend.dto.ExpenseResponse;
 import com.tripnest.tripnest_backend.entity.Budget;
 import com.tripnest.tripnest_backend.entity.Expense;
 import com.tripnest.tripnest_backend.entity.Trip;
-import com.tripnest.tripnest_backend.repository.BudgetRepository;
-import com.tripnest.tripnest_backend.repository.ExpenseRepository;
-import com.tripnest.tripnest_backend.repository.TripRepository;
+import com.tripnest.tripnest_backend.entity.User;
+import com.tripnest.tripnest_backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,9 +26,15 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final BudgetRepository budgetRepository;
     private final TripRepository tripRepository;
+    private final TripMemberRepository tripMemberRepository;
+    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
+    private final TripAccessService tripAccessService;
 
     public ExpenseResponse createExpense(Integer tripId, ExpenseRequest request, String userEmail) {
-        Trip trip = verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found with id: " + tripId));
 
         Budget budget = budgetRepository.findByTripId(tripId)
                 .orElseGet(() -> {
@@ -35,6 +42,7 @@ public class ExpenseService {
                     b.setTrip(trip);
                     b.setTotalBudget(BigDecimal.ZERO);
                     b.setSpentAmount(BigDecimal.ZERO);
+                    b.setCurrency("INR");
                     return budgetRepository.save(b);
                 });
 
@@ -52,7 +60,7 @@ public class ExpenseService {
     }
 
     public List<ExpenseResponse> getExpensesByTrip(Integer tripId, String userEmail) {
-        verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
         return expenseRepository.findByBudgetTripIdOrderByExpenseDateDesc(tripId)
                 .stream()
                 .map(this::mapToResponse)
@@ -63,7 +71,7 @@ public class ExpenseService {
         Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found with id: " + expenseId));
 
-        verifyTripOwner(expense.getBudget().getTrip().getId(), userEmail);
+        tripAccessService.verifyAccess(expense.getBudget().getTrip().getId(), userEmail);
 
         expense.setCategory(request.getCategory());
         expense.setAmount(request.getAmount());
@@ -83,19 +91,19 @@ public class ExpenseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found with id: " + expenseId));
 
         Integer budgetId = expense.getBudget().getId();
-        verifyTripOwner(expense.getBudget().getTrip().getId(), userEmail);
+        tripAccessService.verifyAccess(expense.getBudget().getTrip().getId(), userEmail);
 
         expenseRepository.delete(expense);
         recalculateBudget(budgetId);
     }
 
     public List<CategorySummaryDto> getCategorySummary(Integer tripId, String userEmail) {
-        verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
         return expenseRepository.findCategorySummaryByTripId(tripId);
     }
 
     public BigDecimal getRemainingBudget(Integer tripId, String userEmail) {
-        verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
         Budget budget = budgetRepository.findByTripId(tripId).orElse(null);
         if (budget == null) {
             return BigDecimal.ZERO;
@@ -115,18 +123,52 @@ public class ExpenseService {
                 totalSpent = BigDecimal.ZERO;
             }
             budget.setSpentAmount(totalSpent);
-            budgetRepository.save(budget);
+            Budget savedBudget = budgetRepository.save(budget);
+            checkBudgetAlertThresholds(savedBudget);
         }
     }
 
-    private Trip verifyTripOwner(Integer tripId, String userEmail) {
-        Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found with id: " + tripId));
+    private void checkBudgetAlertThresholds(Budget budget) {
+        if (budget == null || budget.getTrip() == null || budget.getTotalBudget() == null) return;
+        if (budget.getTotalBudget().compareTo(BigDecimal.ZERO) <= 0) return;
 
-        if (!trip.getOwner().getEmail().equalsIgnoreCase(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to access expenses for this trip");
+        BigDecimal totalBudget = budget.getTotalBudget();
+        BigDecimal totalSpent = budget.getSpentAmount() != null ? budget.getSpentAmount() : BigDecimal.ZERO;
+
+        double percentage = totalSpent.multiply(BigDecimal.valueOf(100))
+                .divide(totalBudget, 2, RoundingMode.HALF_UP)
+                .doubleValue();
+
+        Trip trip = budget.getTrip();
+        List<User> recipients = new ArrayList<>();
+        if (trip.getOwner() != null) recipients.add(trip.getOwner());
+        tripMemberRepository.findByTripIdAndStatus(trip.getId(), "APPROVED").forEach(tm -> {
+            if (tm.getUser() != null && !recipients.contains(tm.getUser())) {
+                recipients.add(tm.getUser());
+            }
+        });
+
+        // 80% threshold alert
+        if (percentage >= 80.0) {
+            String key80 = "80% of your trip budget for '" + trip.getTitle() + "'";
+            String msg80 = "Budget Alert: You have used 80% of your trip budget for '" + trip.getTitle() + "'!";
+            for (User user : recipients) {
+                if (!notificationRepository.existsByRecipientIdAndMessageContaining(user.getId(), key80)) {
+                    notificationService.createNotification(user, msg80, "BUDGET_ALERT");
+                }
+            }
         }
-        return trip;
+
+        // 100% threshold alert
+        if (percentage >= 100.0) {
+            String key100 = "100% of your trip budget for '" + trip.getTitle() + "'";
+            String msg100 = "Budget Warning: You have reached 100% of your trip budget for '" + trip.getTitle() + "'!";
+            for (User user : recipients) {
+                if (!notificationRepository.existsByRecipientIdAndMessageContaining(user.getId(), key100)) {
+                    notificationService.createNotification(user, msg100, "BUDGET_ALERT");
+                }
+            }
+        }
     }
 
     private ExpenseResponse mapToResponse(Expense e) {

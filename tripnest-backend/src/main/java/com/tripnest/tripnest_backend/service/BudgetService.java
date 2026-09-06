@@ -19,15 +19,19 @@ public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final TripRepository tripRepository;
+    private final TripAccessService tripAccessService;
 
     public BudgetResponse createBudget(Integer tripId, BudgetRequest request, String userEmail) {
-        Trip trip = verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found with id: " + tripId));
 
         Budget budget = budgetRepository.findByTripId(tripId).orElse(null);
         if (budget == null) {
             budget = new Budget();
             budget.setTrip(trip);
             budget.setSpentAmount(request.getSpentAmount() != null ? request.getSpentAmount() : BigDecimal.ZERO);
+            budget.setCurrency("INR");
         }
 
         budget.setTotalBudget(request.getTotalBudget());
@@ -36,13 +40,16 @@ public class BudgetService {
     }
 
     public BudgetResponse updateBudget(Integer tripId, BudgetRequest request, String userEmail) {
-        Trip trip = verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found with id: " + tripId));
 
         Budget budget = budgetRepository.findByTripId(tripId).orElse(null);
         if (budget == null) {
             budget = new Budget();
             budget.setTrip(trip);
             budget.setSpentAmount(BigDecimal.ZERO);
+            budget.setCurrency("INR");
         }
 
         if (request.getTotalBudget() != null) {
@@ -57,7 +64,9 @@ public class BudgetService {
     }
 
     public BudgetResponse getBudgetByTripId(Integer tripId, String userEmail) {
-        Trip trip = verifyTripOwner(tripId, userEmail);
+        tripAccessService.verifyAccess(tripId, userEmail);
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found with id: " + tripId));
 
         Budget budget = budgetRepository.findByTripId(tripId)
                 .orElseGet(() -> {
@@ -65,21 +74,11 @@ public class BudgetService {
                     b.setTrip(trip);
                     b.setTotalBudget(BigDecimal.ZERO);
                     b.setSpentAmount(BigDecimal.ZERO);
+                    b.setCurrency("INR");
                     return budgetRepository.save(b);
                 });
 
         return mapToResponse(budget);
-    }
-
-    private Trip verifyTripOwner(Integer tripId, String userEmail) {
-        Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found with id: " + tripId));
-
-        if (!trip.getOwner().getEmail().equalsIgnoreCase(userEmail) &&
-                !"ADMINISTRATOR".equals(trip.getOwner().getRole().getName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to access budget for this trip");
-        }
-        return trip;
     }
 
     private BudgetResponse mapToResponse(Budget b) {

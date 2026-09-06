@@ -56,7 +56,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // just means: treat this request as unauthenticated. Don't crash, don't leak
             // the real exception to the client — let it fall through to our
             // CustomAuthenticationEntryPoint's clean 401 response.
-            System.out.println("JWT auth failed: " + ex.getMessage()); // temporary — check console, then remove
             SecurityContextHolder.clearContext();
         }
 

@@ -12,4 +12,11 @@ import java.math.BigDecimal;
 public class CategorySummaryDto {
     private String category;
     private BigDecimal totalAmount;
+    private Double percentage;
+
+    public CategorySummaryDto(String category, BigDecimal totalAmount) {
+        this.category = category;
+        this.totalAmount = totalAmount;
+        this.percentage = 0.0;
+    }
 }

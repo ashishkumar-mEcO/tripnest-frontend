@@ -20,14 +20,14 @@ public class ItineraryService {
 
     private final ItineraryRepository itineraryRepository;
     private final TripRepository tripRepository;
+    private final TripAccessService tripAccessService;
 
     public ItineraryResponse createItinerary(Integer tripId, ItineraryRequest request, String userEmail) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found"));
 
-        if (!trip.getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
+        // Use reusable access check: Trip Owner, Admin, or Approved Member
+        tripAccessService.verifyAccess(tripId, userEmail);
 
         Itinerary itinerary = new Itinerary();
         itinerary.setTrip(trip);
@@ -45,9 +45,8 @@ public class ItineraryService {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found"));
 
-        if (!trip.getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
+        // Use reusable access check: Trip Owner, Admin, or Approved Member
+        tripAccessService.verifyAccess(tripId, userEmail);
 
         return itineraryRepository.findByTripIdOrderByDayNumberAsc(tripId)
                 .stream()

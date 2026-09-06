@@ -13,4 +13,13 @@ public class AuthResponse {
     private String email;
     private String message;
     private String token;
+    private String role;
+
+    public AuthResponse(Integer id, String name, String email, String message, String token) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.message = message;
+        this.token = token;
+    }
 }

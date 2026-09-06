@@ -48,7 +48,8 @@ public class UserService {
                 savedUser.getName(),
                 savedUser.getEmail(),
                 "User registered successfully",
-                null
+                null,
+                savedUser.getRole() != null ? savedUser.getRole().getName() : "TRAVELER"
         );
     }
 
@@ -68,7 +69,8 @@ public class UserService {
                 user.getName(),
                 user.getEmail(),
                 "Login successful",
-                token
+                token,
+                user.getRole() != null ? user.getRole().getName() : "TRAVELER"
         );
     }
 }

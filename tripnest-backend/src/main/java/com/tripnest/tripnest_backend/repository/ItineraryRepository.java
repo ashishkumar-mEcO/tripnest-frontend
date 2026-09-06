@@ -10,4 +10,6 @@ import java.util.List;
 public interface ItineraryRepository extends JpaRepository<Itinerary, Integer> {
 
     List<Itinerary> findByTripIdOrderByDayNumberAsc(Integer tripId);
+
+    void deleteByTripId(Integer tripId);
 }

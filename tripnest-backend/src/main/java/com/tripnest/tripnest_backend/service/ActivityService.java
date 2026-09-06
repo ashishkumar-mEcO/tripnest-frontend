@@ -20,14 +20,13 @@ public class ActivityService {
 
     private final ActivityRepository activityRepository;
     private final ItineraryRepository itineraryRepository;
+    private final TripAccessService tripAccessService;
 
     public ActivityResponse createActivity(Integer itineraryId, ActivityRequest request, String userEmail) {
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Itinerary not found"));
 
-        if (!itinerary.getTrip().getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
+        tripAccessService.verifyAccess(itinerary.getTrip().getId(), userEmail);
 
         Activity activity = new Activity();
         activity.setItinerary(itinerary);
@@ -47,9 +46,7 @@ public class ActivityService {
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Itinerary not found"));
 
-        if (!itinerary.getTrip().getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
+        tripAccessService.verifyAccess(itinerary.getTrip().getId(), userEmail);
 
         return activityRepository.findByItineraryIdOrderByStartTimeAsc(itineraryId)
                 .stream()
@@ -61,9 +58,7 @@ public class ActivityService {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
 
-        if (!activity.getItinerary().getTrip().getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
+        tripAccessService.verifyAccess(activity.getItinerary().getTrip().getId(), userEmail);
 
         activity.setActivityName(request.getActivityName());
         activity.setActivityType(request.getActivityType());
@@ -83,9 +78,7 @@ public class ActivityService {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
 
-        if (!activity.getItinerary().getTrip().getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
+        tripAccessService.verifyAccess(activity.getItinerary().getTrip().getId(), userEmail);
 
         activityRepository.delete(activity);
     }
