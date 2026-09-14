@@ -21,6 +21,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final OtpService otpService;
 
     private static final String DEFAULT_ROLE = "TRAVELER";
 
@@ -42,6 +43,8 @@ public class UserService {
         user.setOauthGoogle(false);
 
         User savedUser = userRepository.save(user);
+
+
 
         return new AuthResponse(
                 savedUser.getId(),
@@ -73,4 +76,45 @@ public class UserService {
                 user.getRole() != null ? user.getRole().getName() : "TRAVELER"
         );
     }
+
+    public AuthResponse processGoogleAuth(com.tripnest.tripnest_backend.dto.GoogleAuthRequest request) {
+        String email = request.getEmail();
+        String name = request.getName();
+
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Google account email is required");
+        }
+
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null) {
+            Role defaultRole = roleRepository.findByName(DEFAULT_ROLE)
+                    .orElseThrow(() -> new RuntimeException("Default role not found."));
+
+            user = new User();
+            user.setName(name != null && !name.isBlank() ? name : email.split("@")[0]);
+            user.setEmail(email);
+            user.setPasswordHash(passwordEncoder.encode("GOOGLE_OAUTH_" + java.util.UUID.randomUUID()));
+            user.setRole(defaultRole);
+            user.setOauthGoogle(true);
+            user = userRepository.save(user);
+        } else {
+            if (!Boolean.TRUE.equals(user.getOauthGoogle())) {
+                user.setOauthGoogle(true);
+                user = userRepository.save(user);
+            }
+        }
+
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        return new AuthResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                "Google authentication successful",
+                token,
+                user.getRole() != null ? user.getRole().getName() : "TRAVELER"
+        );
+    }
 }
+
