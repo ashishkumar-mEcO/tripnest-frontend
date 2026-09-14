@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import api from "@/lib/api";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,14 +23,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await api.post("/auth/register", { name, email, password });
-      setSuccess("Account registered successfully!");
+      await api.post("/auth/register", { name: name.trim(), email: email.trim(), password });
+      setSuccess("Account registered successfully! Redirecting to login...");
       setTimeout(() => {
         router.push("/login");
       }, 1500);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.error) {
-        setError(err.response.data.error);
+      if (axios.isAxiosError(err) && (err.response?.data?.error || err.response?.data?.message)) {
+        setError(err.response.data.error || err.response.data.message);
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -109,11 +110,19 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-md text-sm shadow-sm transition disabled:opacity-50"
+            className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-md text-sm shadow-sm transition disabled:opacity-50 cursor-pointer"
           >
             {loading ? "Creating Account..." : "Register"}
           </button>
         </form>
+
+        <div className="my-5 flex items-center justify-center gap-3">
+          <div className="h-px bg-slate-200 flex-1"></div>
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">or</span>
+          <div className="h-px bg-slate-200 flex-1"></div>
+        </div>
+
+        <GoogleLoginButton buttonText="Sign up with Google" />
 
         <div className="mt-6 text-center text-xs text-slate-500">
           Already have an account?{" "}
