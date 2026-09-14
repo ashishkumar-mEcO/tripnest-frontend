@@ -24,7 +24,12 @@ export default function Navbar() {
     localStorage.clear();
     setUserName(null);
     setUserRole(null);
-    router.push("/login");
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", "/login");
+      window.location.href = "/login";
+    } else {
+      router.push("/login");
+    }
   };
 
   const dashboardHref = userRole === "ADMINISTRATOR" ? "/admin" : "/dashboard";

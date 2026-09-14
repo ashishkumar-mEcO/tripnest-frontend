@@ -18,7 +18,9 @@ export default function LoginPage() {
   useEffect(() => {
     // Parse Google OAuth redirect response hash if present
     if (typeof window !== "undefined" && window.location.hash) {
-      const params = new URLSearchParams(window.location.hash.substring(1));
+      const hashStr = window.location.hash.substring(1);
+      window.history.replaceState(null, "", window.location.pathname);
+      const params = new URLSearchParams(hashStr);
       const idToken = params.get("id_token") || params.get("access_token");
       if (idToken) {
         try {
