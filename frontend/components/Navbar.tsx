@@ -50,8 +50,9 @@ export default function Navbar() {
   return (
     <header className="bg-sky-600 text-white shadow-md sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-        <Link href={dashboardHref} className="text-2xl font-extrabold tracking-wide flex items-center gap-2">
-          ✈️ <span className="text-white">Trip</span><span className="text-amber-400">Nest</span>
+        <Link href={dashboardHref} className="text-2xl font-extrabold tracking-wide flex items-center gap-2.5 group">
+          <img src="/logo.png" alt="TripNest Logo" className="w-8 h-8 rounded-lg shadow-sm border border-sky-400/30 group-hover:scale-105 transition-transform" />
+          <span><span className="text-white">Trip</span><span className="text-amber-400">Nest</span></span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
