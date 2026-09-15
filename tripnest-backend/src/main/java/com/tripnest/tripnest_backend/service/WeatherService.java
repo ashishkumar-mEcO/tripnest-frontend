@@ -2,6 +2,9 @@ package com.tripnest.tripnest_backend.service;
 
 import com.tripnest.tripnest_backend.dto.WeatherResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -27,101 +30,134 @@ public class WeatherService {
         String searchName = cityName.trim();
         String encodedCity = URLEncoder.encode(searchName, StandardCharsets.UTF_8);
 
-        // 1. Live Geocoding API to resolve coordinates for any city/country on Earth
+        Double lat = null;
+        Double lon = null;
+        String displayName = searchName;
+
+        // 1. Primary Geocoding Provider: OpenStreetMap Nominatim (Free, Reliable, Cloud-Server Friendly)
         try {
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TripNest/1.0");
-            org.springframework.http.HttpEntity<Void> requestEntity = new org.springframework.http.HttpEntity<>(headers);
+            HttpHeaders nomHeaders = new HttpHeaders();
+            nomHeaders.set("User-Agent", "TripNestApp/1.0 contact@tripnest.com");
+            HttpEntity<Void> nomRequest = new HttpEntity<>(nomHeaders);
 
-            String geoUrl = String.format(Locale.US, "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", encodedCity);
-            var geoExchange = restTemplate.exchange(geoUrl, org.springframework.http.HttpMethod.GET, requestEntity, Map.class);
-            Map<String, Object> geoResponse = geoExchange.getBody();
+            String nomUrl = String.format("https://nominatim.openstreetmap.org/search?format=json&q=%s", encodedCity);
+            var nomExchange = restTemplate.exchange(nomUrl, HttpMethod.GET, nomRequest, List.class);
+            List<Map<String, Object>> nomResults = nomExchange.getBody();
 
-            if (geoResponse != null && geoResponse.containsKey("results")) {
-                List<Map<String, Object>> results = (List<Map<String, Object>>) geoResponse.get("results");
-                if (results != null && !results.isEmpty()) {
-                    Map<String, Object> firstLocation = results.get(0);
-                    Double lat = ((Number) firstLocation.get("latitude")).doubleValue();
-                    Double lon = ((Number) firstLocation.get("longitude")).doubleValue();
-                    String foundName = (String) firstLocation.getOrDefault("name", searchName);
-                    String country = (String) firstLocation.getOrDefault("country", "");
-                    String displayName = country.isEmpty() ? foundName : foundName + ", " + country;
-
-                    // 2. Primary Weather API: met.no live satellite forecast
-                    try {
-                        String metUrl = String.format(Locale.US, "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.4f&lon=%.4f", lat, lon);
-                        org.springframework.http.HttpHeaders metHeaders = new org.springframework.http.HttpHeaders();
-                        metHeaders.set("User-Agent", "TripNestApp/1.0 contact@tripnest.com");
-                        org.springframework.http.HttpEntity<Void> metRequest = new org.springframework.http.HttpEntity<>(metHeaders);
-
-                        var metExchange = restTemplate.exchange(metUrl, org.springframework.http.HttpMethod.GET, metRequest, Map.class);
-                        Map<String, Object> metBody = metExchange.getBody();
-
-                        if (metBody != null && metBody.containsKey("properties")) {
-                            Map<String, Object> props = (Map<String, Object>) metBody.get("properties");
-                            List<Map<String, Object>> timeseries = (List<Map<String, Object>>) props.get("timeseries");
-                            if (timeseries != null && !timeseries.isEmpty()) {
-                                Map<String, Object> latestData = (Map<String, Object>) timeseries.get(0).get("data");
-                                Map<String, Object> instantDetails = (Map<String, Object>) ((Map<String, Object>) latestData.get("instant")).get("details");
-
-                                Double temp = ((Number) instantDetails.get("air_temperature")).doubleValue();
-                                Double humidity = ((Number) instantDetails.get("relative_humidity")).doubleValue();
-                                Double windSpeed = ((Number) instantDetails.get("wind_speed")).doubleValue();
-
-                                String desc = "Clear & Mild";
-                                if (latestData.containsKey("next_1_hours")) {
-                                    Map<String, Object> n1h = (Map<String, Object>) latestData.get("next_1_hours");
-                                    if (n1h != null && n1h.containsKey("summary")) {
-                                        desc = (String) ((Map<String, Object>) n1h.get("summary")).get("symbol_code");
-                                        desc = desc.replace("_", " ").toUpperCase();
-                                    }
-                                }
-
-                                return new WeatherResponse(displayName, temp, desc, humidity.intValue(), windSpeed, "01d");
-                            }
-                        }
-                    } catch (Exception metEx) {
-                        // Fallback to Open-Meteo
-                    }
-
-                    // 3. Secondary Weather API: Open-Meteo forecast
-                    try {
-                        String weatherUrl = String.format(Locale.US, "https://api.open-meteo.com/v1/forecast?latitude=%.6f&longitude=%.6f&current_weather=true", lat, lon);
-                        var weatherExchange = restTemplate.exchange(weatherUrl, org.springframework.http.HttpMethod.GET, requestEntity, Map.class);
-                        Map<String, Object> weatherResponse = weatherExchange.getBody();
-
-                        if (weatherResponse != null && weatherResponse.containsKey("current_weather")) {
-                            Map<String, Object> currentWeather = (Map<String, Object>) weatherResponse.get("current_weather");
-                            Double temp = ((Number) currentWeather.get("temperature")).doubleValue();
-                            Double windSpeed = ((Number) currentWeather.get("windspeed")).doubleValue();
-                            Integer weatherCode = ((Number) currentWeather.get("weathercode")).intValue();
-
-                            String description = decodeWeatherCode(weatherCode);
-                            String icon = weatherCode == 0 ? "01d" : weatherCode <= 3 ? "02d" : "10d";
-
-                            return new WeatherResponse(displayName, temp, description, 60, windSpeed, icon);
-                        }
-                    } catch (Exception openMeteoEx) {
-                        // Fallback to wttr.in
-                    }
+            if (nomResults != null && !nomResults.isEmpty()) {
+                Map<String, Object> first = nomResults.get(0);
+                lat = Double.parseDouble((String) first.get("lat"));
+                lon = Double.parseDouble((String) first.get("lon"));
+                
+                String fullDisp = (String) first.getOrDefault("display_name", searchName);
+                String[] parts = fullDisp.split(",");
+                if (parts.length >= 2) {
+                    displayName = parts[0].trim() + ", " + parts[parts.length - 1].trim();
+                } else {
+                    displayName = parts[0].trim();
                 }
             }
         } catch (Exception ignored) {
-            // Geocoding fallback
+            // Geocoding fallback to Open-Meteo
+        }
+
+        // Secondary Geocoding Fallback if Nominatim failed
+        if (lat == null || lon == null) {
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("User-Agent", "TripNestApp/1.0 contact@tripnest.com");
+                HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+
+                String geoUrl = String.format(Locale.US, "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", encodedCity);
+                var geoExchange = restTemplate.exchange(geoUrl, HttpMethod.GET, requestEntity, Map.class);
+                Map<String, Object> geoResponse = geoExchange.getBody();
+
+                if (geoResponse != null && geoResponse.containsKey("results")) {
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) geoResponse.get("results");
+                    if (results != null && !results.isEmpty()) {
+                        Map<String, Object> firstLocation = results.get(0);
+                        lat = ((Number) firstLocation.get("latitude")).doubleValue();
+                        lon = ((Number) firstLocation.get("longitude")).doubleValue();
+                        String foundName = (String) firstLocation.getOrDefault("name", searchName);
+                        String country = (String) firstLocation.getOrDefault("country", "");
+                        displayName = country.isEmpty() ? foundName : foundName + ", " + country;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (lat != null && lon != null) {
+            // 2. Primary Live Weather Satellite API: met.no (Norwegian Meteorological Institute)
+            try {
+                String metUrl = String.format(Locale.US, "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.4f&lon=%.4f", lat, lon);
+                HttpHeaders metHeaders = new HttpHeaders();
+                metHeaders.set("User-Agent", "TripNestApp/1.0 contact@tripnest.com");
+                HttpEntity<Void> metRequest = new HttpEntity<>(metHeaders);
+
+                var metExchange = restTemplate.exchange(metUrl, HttpMethod.GET, metRequest, Map.class);
+                Map<String, Object> metBody = metExchange.getBody();
+
+                if (metBody != null && metBody.containsKey("properties")) {
+                    Map<String, Object> props = (Map<String, Object>) metBody.get("properties");
+                    List<Map<String, Object>> timeseries = (List<Map<String, Object>>) props.get("timeseries");
+                    if (timeseries != null && !timeseries.isEmpty()) {
+                        Map<String, Object> latestData = (Map<String, Object>) timeseries.get(0).get("data");
+                        Map<String, Object> instantDetails = (Map<String, Object>) ((Map<String, Object>) latestData.get("instant")).get("details");
+
+                        Double temp = ((Number) instantDetails.get("air_temperature")).doubleValue();
+                        Double humidity = ((Number) instantDetails.get("relative_humidity")).doubleValue();
+                        Double windSpeed = ((Number) instantDetails.get("wind_speed")).doubleValue();
+
+                        String desc = "Clear & Mild";
+                        if (latestData.containsKey("next_1_hours")) {
+                            Map<String, Object> n1h = (Map<String, Object>) latestData.get("next_1_hours");
+                            if (n1h != null && n1h.containsKey("summary")) {
+                                desc = (String) ((Map<String, Object>) n1h.get("summary")).get("symbol_code");
+                                desc = desc.replace("_", " ").toUpperCase();
+                            }
+                        }
+
+                        return new WeatherResponse(displayName, temp, desc, humidity.intValue(), windSpeed, "01d");
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // 3. Secondary Weather API: Open-Meteo Forecast
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("User-Agent", "TripNestApp/1.0 contact@tripnest.com");
+                HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+
+                String weatherUrl = String.format(Locale.US, "https://api.open-meteo.com/v1/forecast?latitude=%.6f&longitude=%.6f&current_weather=true", lat, lon);
+                var weatherExchange = restTemplate.exchange(weatherUrl, HttpMethod.GET, requestEntity, Map.class);
+                Map<String, Object> weatherResponse = weatherExchange.getBody();
+
+                if (weatherResponse != null && weatherResponse.containsKey("current_weather")) {
+                    Map<String, Object> currentWeather = (Map<String, Object>) weatherResponse.get("current_weather");
+                    Double temp = ((Number) currentWeather.get("temperature")).doubleValue();
+                    Double windSpeed = ((Number) currentWeather.get("windspeed")).doubleValue();
+                    Integer weatherCode = ((Number) currentWeather.get("weathercode")).intValue();
+
+                    String description = decodeWeatherCode(weatherCode);
+                    String icon = weatherCode == 0 ? "01d" : weatherCode <= 3 ? "02d" : "10d";
+
+                    return new WeatherResponse(displayName, temp, description, 60, windSpeed, icon);
+                }
+            } catch (Exception ignored) {}
         }
 
         // 4. Tertiary Weather API: wttr.in real-time API
-        return fetchLiveWttrWeather(searchName, encodedCity);
+        return fetchLiveWttrWeather(displayName, encodedCity);
     }
 
     private WeatherResponse fetchLiveWttrWeather(String cityName, String encodedCity) {
         try {
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TripNest/1.0");
-            org.springframework.http.HttpEntity<Void> requestEntity = new org.springframework.http.HttpEntity<>(headers);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "TripNestApp/1.0 contact@tripnest.com");
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
 
             String wttrUrl = String.format("https://wttr.in/%s?format=j1", encodedCity);
-            var exchange = restTemplate.exchange(wttrUrl, org.springframework.http.HttpMethod.GET, requestEntity, Map.class);
+            var exchange = restTemplate.exchange(wttrUrl, HttpMethod.GET, requestEntity, Map.class);
             Map<String, Object> body = exchange.getBody();
 
             if (body != null && body.containsKey("current_condition")) {
