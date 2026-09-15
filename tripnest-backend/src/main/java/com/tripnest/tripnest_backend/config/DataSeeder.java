@@ -64,18 +64,31 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedDestinations() {
-        if (destinationRepository.count() < 10) {
-            saveIfMissing("Paris", "France", "City of Light and iconic Eiffel Tower", "Sunny 22°C", true);
-            saveIfMissing("Bali", "Indonesia", "Tropical paradise with beaches and temples", "Tropical 29°C", true);
-            saveIfMissing("Tokyo", "Japan", "Vibrant metropolis blending tradition and future", "Clear 19°C", true);
-            saveIfMissing("Goa", "India", "Famous beach paradise with nightlife and historic churches", "Sunny 30°C", true);
-            saveIfMissing("Rome", "Italy", "Historic capital with Ancient Colosseum", "Warm 26°C", false);
-            saveIfMissing("New York", "USA", "The city that never sleeps", "Breezy 21°C", false);
-            saveIfMissing("London", "UK", "Historic capital with Big Ben and London Eye", "Mild 18°C", false);
-            saveIfMissing("Dubai", "UAE", "Luxury shopping, ultra-modern architecture and nightlife", "Sunny 34°C", true);
-            saveIfMissing("Kerala", "India", "Backwaters, palm-lined beaches and spice plantations", "Tropical 28°C", true);
-            saveIfMissing("Sydney", "Australia", "Famous Opera House and coastal surf beaches", "Sunny 24°C", false);
-        }
+        saveIfMissing("Paris", "France", "City of Light and iconic Eiffel Tower", "Sunny 22°C", true);
+        saveIfMissing("Bali", "Indonesia", "Tropical paradise with beaches and temples", "Tropical 29°C", true);
+        saveIfMissing("Tokyo", "Japan", "Vibrant metropolis blending tradition and future", "Clear 19°C", true);
+        saveIfMissing("Goa", "India", "Famous beach paradise with nightlife and historic churches", "Sunny 30°C", true);
+        saveIfMissing("Rome", "Italy", "Historic capital with Ancient Colosseum", "Warm 26°C", false);
+        saveIfMissing("New York", "USA", "The city that never sleeps", "Breezy 21°C", false);
+        saveIfMissing("London", "UK", "Historic capital with Big Ben and London Eye", "Mild 18°C", false);
+        saveIfMissing("Dubai", "UAE", "Luxury shopping, ultra-modern architecture and nightlife", "Sunny 34°C", true);
+        saveIfMissing("Kerala", "India", "Backwaters, palm-lined beaches and spice plantations", "Tropical 28°C", true);
+        saveIfMissing("Sydney", "Australia", "Famous Opera House and coastal surf beaches", "Sunny 24°C", false);
+        saveIfMissing("Bangkok", "Thailand", "Vibrant street life, ornate shrines and temples", "Tropical 32°C", true);
+        saveIfMissing("Singapore", "Singapore", "Garden city with iconic Marina Bay Sands & culture", "Tropical 30°C", true);
+        saveIfMissing("Manali", "India", "High-altitude Himalayan resort town with snow sports", "Cool 16°C", true);
+        saveIfMissing("Shimla", "India", "Capital of Himachal Pradesh with colonial heritage", "Pleasant 18°C", false);
+        saveIfMissing("Santorini", "Greece", "Whitewashed houses and breathtaking Aegean sea views", "Sunny 25°C", true);
+        saveIfMissing("Kyoto", "Japan", "Famous for classical Buddhist temples, gardens and shrines", "Mild 20°C", true);
+        saveIfMissing("Amsterdam", "Netherlands", "Historic canals, tulip fields and world-class museums", "Breezy 19°C", false);
+        saveIfMissing("Barcelona", "Spain", "Famous for Sagrada Família, beaches and Catalan culture", "Sunny 24°C", true);
+        saveIfMissing("Maldives", "Maldives", "Overwater bungalows, crystal clear lagoons & reefs", "Tropical 29°C", true);
+        saveIfMissing("Hawaii", "USA", "Volcanoes, beaches, surf culture and tropical nature", "Sunny 27°C", true);
+        saveIfMissing("Cairo", "Egypt", "Giza Pyramids, Great Sphinx and ancient Nile river", "Warm 31°C", false);
+        saveIfMissing("Switzerland", "Switzerland", "Alpine scenery, snowy peaks, lakes and luxury watchmaking", "Cool 17°C", true);
+        saveIfMissing("Toronto", "Canada", "Dynamic metropolis with iconic CN Tower & lakefront", "Mild 20°C", false);
+        saveIfMissing("Venice", "Italy", "Romantic canal city with gondolas and St Mark's Basilica", "Warm 23°C", false);
+        saveIfMissing("Istanbul", "Turkey", "Historic city straddling Europe and Asia across the Bosphorus", "Sunny 22°C", true);
     }
 
     private void saveIfMissing(String name, String country, String desc, String weather, boolean popular) {
