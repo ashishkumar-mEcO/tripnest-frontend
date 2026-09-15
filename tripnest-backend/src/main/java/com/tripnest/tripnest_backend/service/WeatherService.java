@@ -29,7 +29,7 @@ public class WeatherService {
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TripNest/1.0");
             org.springframework.http.HttpEntity<Void> requestEntity = new org.springframework.http.HttpEntity<>(headers);
 
-            String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", searchName);
+            String geoUrl = String.format(java.util.Locale.US, "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1", searchName);
             var geoExchange = restTemplate.exchange(geoUrl, org.springframework.http.HttpMethod.GET, requestEntity, Map.class);
             Map<String, Object> geoResponse = geoExchange.getBody();
 
@@ -43,8 +43,8 @@ public class WeatherService {
                     String country = (String) firstLocation.getOrDefault("country", "");
                     String displayName = country.isEmpty() ? foundName : foundName + ", " + country;
 
-                    // 2. Fetch Live Weather Data from Weather Satellite API with custom User-Agent
-                    String weatherUrl = String.format("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current_weather=true", lat, lon);
+                    // 2. Fetch Live Weather Data from Weather Satellite API with custom User-Agent and Locale.US
+                    String weatherUrl = String.format(java.util.Locale.US, "https://api.open-meteo.com/v1/forecast?latitude=%.6f&longitude=%.6f&current_weather=true", lat, lon);
                     var weatherExchange = restTemplate.exchange(weatherUrl, org.springframework.http.HttpMethod.GET, requestEntity, Map.class);
                     Map<String, Object> weatherResponse = weatherExchange.getBody();
 
