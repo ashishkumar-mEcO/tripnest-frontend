@@ -15,6 +15,8 @@ public class TripRequest {
 
     private Integer destinationId;
 
+    private String destinationName;
+
     @NotNull(message = "Start date is required")
     private LocalDate startDate;
 

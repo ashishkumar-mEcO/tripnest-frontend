@@ -25,6 +25,7 @@ interface Destination {
   id: number;
   name: string;
   country: string;
+  isPopular?: boolean;
 }
 
 export default function TripsPage() {
@@ -52,7 +53,10 @@ export default function TripsPage() {
 
   // Form State
   const [formTitle, setFormTitle] = useState("");
-  const [formDestId, setFormDestId] = useState<number>(1);
+  const [formDestId, setFormDestId] = useState<number>(0);
+  const [formDestName, setFormDestName] = useState<string>("");
+  const [destSearchInput, setDestSearchInput] = useState<string>("");
+  const [showDestDropdown, setShowDestDropdown] = useState<boolean>(false);
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate] = useState("");
   const [formTravellers, setFormTravellers] = useState<number>(1);
@@ -124,7 +128,12 @@ export default function TripsPage() {
   const handleOpenCreateModal = () => {
     setEditingTripId(null);
     setFormTitle("");
-    setFormDestId(destinations[0]?.id || 1);
+    const initialDest = destinations[0];
+    setFormDestId(initialDest?.id || 0);
+    const initialName = initialDest ? `${initialDest.name}, ${initialDest.country}` : "";
+    setFormDestName(initialName);
+    setDestSearchInput(initialName);
+    setShowDestDropdown(false);
     setFormStartDate("");
     setFormEndDate("");
     setFormTravellers(1);
@@ -136,7 +145,10 @@ export default function TripsPage() {
   const handleOpenEditModal = (trip: Trip) => {
     setEditingTripId(trip.id);
     setFormTitle(trip.title);
-    setFormDestId(trip.destinationId || 1);
+    setFormDestId(trip.destinationId || 0);
+    setFormDestName(trip.destinationName || "");
+    setDestSearchInput(trip.destinationName || "");
+    setShowDestDropdown(false);
     setFormStartDate(trip.startDate);
     setFormEndDate(trip.endDate);
     setFormTravellers(trip.numberOfTravellers || 1);
@@ -151,7 +163,8 @@ export default function TripsPage() {
 
     const payload = {
       title: formTitle,
-      destinationId: formDestId,
+      destinationId: formDestId || null,
+      destinationName: formDestName || destSearchInput.trim(),
       startDate: formStartDate,
       endDate: formEndDate,
       numberOfTravellers: formTravellers,
@@ -471,20 +484,88 @@ export default function TripsPage() {
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Destination Location</label>
-                <select
-                  value={formDestId}
-                  onChange={(e) => setFormDestId(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-sky-500 outline-none font-medium text-slate-800"
-                >
-                  {destinations
-                    .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        📍 {d.name}, {d.country}
-                      </option>
-                    ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={destSearchInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDestSearchInput(val);
+                      setFormDestName(val);
+                      setFormDestId(0);
+                      setShowDestDropdown(true);
+                    }}
+                    onFocus={() => setShowDestDropdown(true)}
+                    placeholder="Search any city or country (e.g. Tokyo, Paris, Bali)..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-sky-500 outline-none font-medium text-slate-800"
+                  />
+                  {showDestDropdown && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-sky-100 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                      {destinations
+                        .filter((d) =>
+                          d.name.toLowerCase().includes(destSearchInput.toLowerCase()) ||
+                          d.country.toLowerCase().includes(destSearchInput.toLowerCase())
+                        )
+                        .slice(0, 8)
+                        .map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => {
+                              setFormDestId(d.id);
+                              setFormDestName(`${d.name}, ${d.country}`);
+                              setDestSearchInput(`${d.name}, ${d.country}`);
+                              setShowDestDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-sky-50 flex items-center justify-between transition border-b border-slate-50 last:border-0"
+                          >
+                            <span className="font-semibold text-slate-800">📍 {d.name}, {d.country}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{d.isPopular ? "Popular" : "Destination"}</span>
+                          </button>
+                        ))}
+
+                      {destSearchInput.trim().length >= 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormDestId(0);
+                            setFormDestName(destSearchInput.trim());
+                            setShowDestDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs bg-sky-50 hover:bg-sky-100 text-sky-900 font-bold flex items-center gap-1.5 transition"
+                        >
+                          ✨ Search & Create "{destSearchInput.trim()}" dynamically via API
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {["Paris", "Tokyo", "Bali", "Goa", "Dubai", "New York"].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => {
+                        const found = destinations.find(d => d.name.toLowerCase().includes(chip.toLowerCase()));
+                        if (found) {
+                          setFormDestId(found.id);
+                          setFormDestName(`${found.name}, ${found.country}`);
+                          setDestSearchInput(`${found.name}, ${found.country}`);
+                        } else {
+                          setFormDestId(0);
+                          setFormDestName(chip);
+                          setDestSearchInput(chip);
+                        }
+                        setShowDestDropdown(false);
+                      }}
+                      className="bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-sky-900 text-[10px] font-bold px-2 py-0.5 rounded-md transition"
+                    >
+                      📍 {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -41,11 +41,7 @@ public class TripService {
     public TripResponse createTrip(TripRequest request, String userEmail) {
         User user = getUserByEmail(userEmail);
 
-        Destination destination = null;
-        if (request.getDestinationId() != null) {
-            destination = destinationRepository.findById(request.getDestinationId())
-                    .orElseThrow(() -> new RuntimeException("Destination not found with id: " + request.getDestinationId()));
-        }
+        Destination destination = resolveDestination(request.getDestinationId(), request.getDestinationName());
 
         Trip trip = new Trip();
         trip.setOwner(user);
@@ -110,10 +106,9 @@ public class TripService {
         if (request.getEndDate() != null && !request.getEndDate().equals(trip.getEndDate())) coreDetailsChanged = true;
         if (request.getDestinationId() != null && (trip.getDestination() == null || !request.getDestinationId().equals(trip.getDestination().getId()))) coreDetailsChanged = true;
 
-        if (request.getDestinationId() != null) {
-            Destination destination = destinationRepository.findById(request.getDestinationId())
-                    .orElseThrow(() -> new RuntimeException("Destination not found with id: " + request.getDestinationId()));
-            trip.setDestination(destination);
+        Destination resolvedDest = resolveDestination(request.getDestinationId(), request.getDestinationName());
+        if (resolvedDest != null) {
+            trip.setDestination(resolvedDest);
         }
 
         trip.setTitle(request.getTitle());
@@ -219,5 +214,29 @@ public class TripService {
                 budgetAmount,
                 t.getStatus()
         );
+    }
+
+    private Destination resolveDestination(Integer destinationId, String destinationName) {
+        if (destinationId != null) {
+            return destinationRepository.findById(destinationId).orElse(null);
+        }
+        if (destinationName != null && !destinationName.isBlank()) {
+            String trimmed = destinationName.trim();
+            return destinationRepository.findAll().stream()
+                    .filter(d -> d.getName().equalsIgnoreCase(trimmed) || (d.getName() + ", " + d.getCountry()).equalsIgnoreCase(trimmed))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        String name = trimmed;
+                        String country = "Global Destination";
+                        if (trimmed.contains(",")) {
+                            String[] parts = trimmed.split(",");
+                            name = parts[0].trim();
+                            country = parts[parts.length - 1].trim();
+                        }
+                        Destination newDest = new Destination(null, name, country, "Custom travel destination: " + trimmed, null, false);
+                        return destinationRepository.save(newDest);
+                    });
+        }
+        return null;
     }
 }
