@@ -138,15 +138,12 @@ public class DashboardService {
         long totalTrips = allTrips.size();
         LocalDate today = LocalDate.now();
 
-        long activeTrips = allTrips.stream()
-                .filter(t -> "ACTIVE".equalsIgnoreCase(t.getStatus()) ||
-                        ("PLANNED".equalsIgnoreCase(t.getStatus()) && t.getStartDate() != null && !t.getStartDate().isAfter(today)))
-                .count();
-
         long completedTrips = allTrips.stream()
                 .filter(t -> "COMPLETED".equalsIgnoreCase(t.getStatus()) ||
                         (t.getEndDate() != null && t.getEndDate().isBefore(today)))
                 .count();
+
+        long activeTrips = totalTrips - completedTrips;
 
         AdminDashboardResponse.UserAnalytics userAnalytics = new AdminDashboardResponse.UserAnalytics(totalUsers);
         AdminDashboardResponse.TripAnalytics tripAnalytics = new AdminDashboardResponse.TripAnalytics(
