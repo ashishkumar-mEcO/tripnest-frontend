@@ -94,8 +94,12 @@ export default function LoginPage() {
 
       setSuccess(`Welcome, ${data.name || "back"}!`);
       setTimeout(() => {
-        router.push("/");
-      }, 1200);
+        if (data.role === "ADMINISTRATOR") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
+        }
+      }, 1000);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.error) {
         setError(err.response.data.error);
