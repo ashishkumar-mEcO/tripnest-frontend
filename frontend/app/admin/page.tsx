@@ -97,36 +97,36 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  const openUsersModal = () => {
+  const openUsersModal = async () => {
     setUsersModalOpen(true);
     setLoadingUsers(true);
-    api
-      .get<RegisteredUser[]>("/admin/users")
-      .then((res) => {
-        setUsersList(res.data);
-      })
-      .catch((err) => {
-        console.error("Error fetching registered users:", err);
-      })
-      .finally(() => setLoadingUsers(false));
+    try {
+      const res = await api.get<RegisteredUser[]>("/admin/users");
+      setUsersList(res.data);
+    } catch (err) {
+      console.error("Error fetching registered users:", err);
+    } finally {
+      setLoadingUsers(false);
+    }
   };
 
-  const openTripsModal = () => {
+  const openTripsModal = async () => {
     setTripsModalOpen(true);
     setLoadingTrips(true);
-    api
-      .get<PlatformTrip[]>("/admin/trips")
-      .then((res) => {
-        setTripsList(res.data);
-      })
-      .catch((err) => {
-        console.error("Error fetching trips from admin API, attempting fallback:", err);
-        api
-          .get<PlatformTrip[]>("/trips/search?title=")
-          .then((res) => setTripsList(res.data))
-          .catch((e) => console.error("Fallback search failed:", e));
-      })
-      .finally(() => setLoadingTrips(false));
+    try {
+      const res = await api.get<PlatformTrip[]>("/admin/trips");
+      setTripsList(res.data);
+    } catch (err) {
+      console.warn("Primary /admin/trips endpoint failed, attempting /trips/my-trips fallback:", err);
+      try {
+        const fallbackRes = await api.get<PlatformTrip[]>("/trips/my-trips");
+        setTripsList(fallbackRes.data);
+      } catch (fallbackErr) {
+        console.error("All trip fetch attempts failed:", fallbackErr);
+      }
+    } finally {
+      setLoadingTrips(false);
+    }
   };
 
   const filteredUsers = usersList.filter(
