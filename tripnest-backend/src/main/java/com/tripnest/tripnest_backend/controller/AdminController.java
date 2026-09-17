@@ -1,5 +1,6 @@
 package com.tripnest.tripnest_backend.controller;
  
+import com.tripnest.tripnest_backend.dto.TripResponse;
 import com.tripnest.tripnest_backend.dto.UpdateRoleRequest;
 import com.tripnest.tripnest_backend.dto.UserSummaryResponse;
 import com.tripnest.tripnest_backend.service.AdminService;
@@ -27,6 +28,11 @@ public class AdminController {
     @GetMapping("/users")
     public List<UserSummaryResponse> listUsers() {
         return adminService.listUsers();
+    }
+ 
+    @GetMapping("/trips")
+    public List<TripResponse> listTrips() {
+        return adminService.listTrips();
     }
  
     @PutMapping("/users/{id}/role")
